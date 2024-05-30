@@ -29,7 +29,7 @@ from vllm.utils import (CudaMemoryProfiler, async_tensor_h2d, is_hip,
 
 from vllm.attention.ops.paged_attn import PagedAttention
 import vllm._custom_ops as ops
-from lmcache.cache_engine import LMCacheEngine
+from lmcache.cache_engine import LMCacheEngine, LMCacheEngineBuilder, LMCacheEngineConfig
 
 logger = init_logger(__name__)
 
@@ -163,7 +163,7 @@ class ModelRunner:
 
         # Cache engine
         # TODO: remove the hard-coding and let it use configuration objects
-        self.cache_engine = LMCacheEngine(chunk_size = 25900, persist_path = "/tmp/cache-engine.pth")
+        self.cache_engine = LMCacheEngineBuilder.get("vllm") 
 
     def load_model(self) -> None:
         with CudaMemoryProfiler() as m:
