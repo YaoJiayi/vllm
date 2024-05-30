@@ -164,6 +164,10 @@ class ModelRunner:
         # Cache engine
         # TODO: remove the hard-coding and let it use configuration objects
         self.cache_engine = LMCacheEngineBuilder.get("vllm") 
+        if self.cache_engine is None:
+            logger.info("LMCache engine is NOT loaded!")
+        else:
+            logger.info("LMCache engine is loaded!")
 
     def load_model(self) -> None:
         with CudaMemoryProfiler() as m:

@@ -125,6 +125,16 @@ if __name__ == "__main__":
         allow_headers=args.allowed_headers,
     )
 
+    if args.enable_lmcache:
+        from lmcache.cache_engine import LMCacheEngineBuilder, LMCacheEngineConfig
+        LMCacheEngineBuilder.get_or_create(
+                "vllm",
+                LMCacheEngineConfig(
+                    256, 
+                    "cuda", 
+                    "/tmp/cache-engine.pth"))
+
+
     if token := os.environ.get("VLLM_API_KEY") or args.api_key:
 
         @app.middleware("http")

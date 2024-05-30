@@ -117,6 +117,10 @@ def make_arg_parser():
         "using @app.middleware('http'). "
         "If a class is provided, vLLM will add it to the server "
         "using app.add_middleware(). ")
+    parser.add_argument(
+        "--enable-lmcache",
+        action="store_true",
+        help="Enable LMCache engine")
 
     parser = AsyncEngineArgs.add_cli_args(parser)
     return parser
