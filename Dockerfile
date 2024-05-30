@@ -153,3 +153,22 @@ ENV VLLM_USAGE_SOURCE production-docker-image
 
 ENTRYPOINT ["python3", "-m", "vllm.entrypoints.openai.api_server"]
 #################### OPENAI API SERVER ####################
+
+
+#################### LMCache test SERVER ####################
+# openai api server alternative
+FROM vllm-openai AS vllm-lmcache
+
+WORKDIR /lmcache
+
+# install additional dependencies for openai api server
+RUN git clone https://github.com/LMCache/LMCache
+
+WORKDIR /lmcache/LMCache
+
+RUN pip install -e .
+
+ENTRYPOINT ["sleep", "infinity"]
+#################### LMCache test SERVER ####################
+
+
