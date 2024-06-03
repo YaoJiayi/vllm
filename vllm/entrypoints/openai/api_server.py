@@ -129,10 +129,9 @@ if __name__ == "__main__":
         from lmcache.cache_engine import LMCacheEngineBuilder, LMCacheEngineConfig
         LMCacheEngineBuilder.get_or_create(
                 "vllm",
-                LMCacheEngineConfig(
+                LMCacheEngineConfig.from_legacy(
                     256, 
-                    args.lmcache_backend, 
-                    "/tmp/persist.pth"))
+                    args.lmcache_backend))
 
 
     if token := os.environ.get("VLLM_API_KEY") or args.api_key:
