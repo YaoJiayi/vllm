@@ -131,8 +131,8 @@ if __name__ == "__main__":
                 "vllm",
                 LMCacheEngineConfig(
                     256, 
-                    "cuda", 
-                    "/tmp/cache-engine.pth"))
+                    args.lmcache_backend, 
+                    "/tmp/persist.pth"))
 
 
     if token := os.environ.get("VLLM_API_KEY") or args.api_key:

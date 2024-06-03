@@ -121,6 +121,11 @@ def make_arg_parser():
         "--enable-lmcache",
         action="store_true",
         help="Enable LMCache engine")
+    parser.add_argument(
+        "--lmcache-backend",
+        type=str,
+        default="cuda",
+        help="Set the backend of the lmcache, can be 'cuda', 'cpu', or 'redis://<hostname>:<port>'")
 
     parser = AsyncEngineArgs.add_cli_args(parser)
     return parser
