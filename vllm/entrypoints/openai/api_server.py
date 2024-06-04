@@ -127,11 +127,14 @@ if __name__ == "__main__":
 
     if args.enable_lmcache:
         from lmcache.cache_engine import LMCacheEngineBuilder, LMCacheEngineConfig
+        local_cache = args.lmcache_local_cache if args.lmcache_local_cache in ["cpu", "cuda"] else None
         LMCacheEngineBuilder.get_or_create(
                 "vllm",
-                LMCacheEngineConfig.from_legacy(
-                    256, 
-                    args.lmcache_backend))
+                LMCacheEngineConfig.from_defaults(
+                    chunk_size = args.lmcache_chunksize,
+                    local_device = args.lmcache_local_cache,
+                    remote_url = args.lmcache_remote_cache)
+            )
 
 
     if token := os.environ.get("VLLM_API_KEY") or args.api_key:

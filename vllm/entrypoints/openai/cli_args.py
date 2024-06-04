@@ -117,15 +117,29 @@ def make_arg_parser():
         "using @app.middleware('http'). "
         "If a class is provided, vLLM will add it to the server "
         "using app.add_middleware(). ")
+
+    # LMCache related arguments
     parser.add_argument(
         "--enable-lmcache",
         action="store_true",
         help="Enable LMCache engine")
     parser.add_argument(
-        "--lmcache-backend",
+        "--lmcache-local-cache",
         type=str,
         default="cuda",
-        help="Set the backend of the lmcache, can be 'cuda', 'cpu', or 'redis://<hostname>:<port>'")
+        help="Set the local cache backeend of lmcache, can be 'cuda' or 'cpu'")
+    parser.add_argument(
+        "--lmcache-remote-cache",
+        type=str,
+        default=None,
+        help="Set the url the remote cache backend of lmcache, currently support "
+             "redis (redis://<host>:<port>), or "
+             "lmcache-server (lm://<host>:<port>)")
+    parser.add_argument(
+        "--lmcache-chunksize",
+        type=int,
+        default=256,
+        help="Set the chunksize of lmcache engine")
 
     parser = AsyncEngineArgs.add_cli_args(parser)
     return parser
