@@ -88,6 +88,10 @@ class ModelConfig:
         max_context_len_to_capture: Optional[int] = None,
         max_logprobs: int = 5,
         skip_tokenizer_init: bool = False,
+        enable_lmcache: bool = False,
+        lmcache_chunksize: int = 256,
+        lmcache_local_cache: Optional[str] = None,
+        lmcache_remote_cache: Optional[str] = None,
     ) -> None:
         self.model = model
         self.tokenizer = tokenizer
@@ -110,6 +114,12 @@ class ModelConfig:
         self.dtype = _get_and_verify_dtype(self.hf_text_config, dtype)
         self.max_model_len = _get_and_verify_max_len(self.hf_text_config,
                                                      max_model_len)
+
+        self.enable_lmcache = enable_lmcache
+        self.lmcache_chunksize = lmcache_chunksize
+        self.lmcache_local_cache = lmcache_local_cache
+        self.lmcache_remote_cache = lmcache_remote_cache
+
         if not self.skip_tokenizer_init:
             self._verify_tokenizer_mode()
         self._verify_quantization()

@@ -75,6 +75,12 @@ class EngineArgs:
     num_speculative_tokens: Optional[int] = None
     speculative_max_model_len: Optional[int] = None
 
+    # LMCache configuration
+    enable_lmcache: bool = False
+    lmcache_chunksize: int = 256
+    lmcache_local_cache: Optional[str] = None
+    lmcache_remote_cache: Optional[str] = None
+
     def __post_init__(self):
         if self.tokenizer is None:
             self.tokenizer = self.model
@@ -467,7 +473,10 @@ class EngineArgs:
             self.code_revision, self.tokenizer_revision, self.max_model_len,
             self.quantization, self.quantization_param_path,
             self.enforce_eager, self.max_context_len_to_capture,
-            self.max_logprobs, self.skip_tokenizer_init)
+            self.max_logprobs, self.skip_tokenizer_init,
+            self.enable_lmcache, self.lmcache_chunksize, 
+            self.lmcache_local_cache, self.lmcache_remote_cache,
+            )
         cache_config = CacheConfig(self.block_size,
                                    self.gpu_memory_utilization,
                                    self.swap_space, self.kv_cache_dtype,

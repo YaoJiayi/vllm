@@ -21,6 +21,8 @@ from vllm.sequence import SamplerOutput, SequenceGroupMetadata
 from vllm.worker.cache_engine import CacheEngine
 from vllm.worker.model_runner import ModelRunner
 from vllm.worker.worker_base import WorkerBase
+from lmcache.cache_engine import LMCacheEngineBuilder
+from lmcache.config import LMCacheEngineConfig, LMCacheEngineMetadata
 
 
 class Worker(WorkerBase):
@@ -68,6 +70,14 @@ class Worker(WorkerBase):
         if self.vision_language_config:
             assert not self.lora_config, (
                 "To be tested: vision language model with LoRA settings.")
+
+        # create lmcache engine 
+        if model_config.enable_lmcache:
+            lmcache_metadata = LMCacheEngineMetadata(model_config.model, rank)
+            lmcache_config = LMCacheEngineConfig(model_config.lmcache_chunksize, 
+                                                 model_config.lmcache_local_cache,
+                                                 model_config.lmcache_remote_cache)
+            LMCacheEngineBuilder.get_or_create("vllm", lmcache_config, lmcache_metadata)
 
         self.model_runner = ModelRunner(
             model_config,

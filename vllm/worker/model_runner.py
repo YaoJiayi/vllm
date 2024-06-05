@@ -1,7 +1,7 @@
 import contextlib
 import time
 from enum import IntEnum
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Any
 
 import numpy as np
 import torch
@@ -11,7 +11,7 @@ from vllm.attention import (AttentionMetadata, AttentionMetadataPerStage,
                             get_attn_backend)
 from vllm.config import (DeviceConfig, LoadConfig, LoRAConfig, ModelConfig,
                          ParallelConfig, SchedulerConfig, VisionLanguageConfig)
-from vllm.distributed import broadcast_tensor_dict, with_pynccl_for_all_reduce
+from vllm.distributed import broadcast_tensor_dict, with_pynccl_for_all_reduce, broadcast_object_list, broadcast
 from vllm.distributed.device_communicators import (custom_all_reduce,
                                                    pynccl_utils)
 from vllm.logger import init_logger
@@ -29,7 +29,8 @@ from vllm.utils import (CudaMemoryProfiler, async_tensor_h2d, is_hip,
 
 from vllm.attention.ops.paged_attn import PagedAttention
 import vllm._custom_ops as ops
-from lmcache.cache_engine import LMCacheEngine, LMCacheEngineBuilder, LMCacheEngineConfig
+from lmcache.cache_engine import LMCacheEngine, LMCacheEngineBuilder
+from lmcache.config import LMCacheEngineConfig, LMCacheEngineMetadata
 
 logger = init_logger(__name__)
 
@@ -162,12 +163,12 @@ class ModelRunner:
         self.graph_block_tables: torch.Tensor  # Set after initial profiling.
 
         # Cache engine
-        # TODO: remove the hard-coding and let it use configuration objects
-        self.cache_engine = LMCacheEngineBuilder.get("vllm") 
-        if self.cache_engine is None:
-            logger.info("LMCache engine is NOT loaded!")
+        # TODO: consider getting the worker id from ray instead of os.getpid
+        self.cache_engine = LMCacheEngineBuilder.get("vllm")
+        if self.cache_engine is not None:
+            logger.info(f"\033[33mLMCache engine is loaded: {self.cache_engine}\033[0m")
         else:
-            logger.info("LMCache engine is loaded!")
+            logger.info("LMCache engine is NOT loaded!")
 
     def load_model(self) -> None:
         with CudaMemoryProfiler() as m:
@@ -275,6 +276,107 @@ class ModelRunner:
         logger.info(f"Injected {len(loaded_block_nums) - 1} blocks")
         return loaded_block_nums[:-1]
 
+    def _retrive_and_inject(
+            self, 
+            kv_caches: List[torch.Tensor],
+            token_ids: List[int],
+            block_table: List[int],
+    ) -> List[int]:
+        """
+        For cache engine: inject the loaded cache into the kv_caches buffer
+
+        Input:
+            kv_caches: the vLLM's KV cache buffer
+            tokens_ids: a list of ints representing the token ids
+            block_table: the block table of the corresponding sequence
+
+        Output:
+            loaded_block_nums: the block idx of the blocks that are being injected.
+                               Can be an empty list if nothing is injected
+        """
+        loaded_kv, loaded_kv_len = self.cache_engine.retrive(torch.tensor(token_ids), "vllm", self.device)
+        if loaded_kv_len > self.block_size: # skip if less than a single block
+            loaded_block_nums = self._inject_kv_cache(kv_caches, loaded_kv, loaded_kv_len, block_table)
+            return loaded_block_nums
+        else:
+            return []
+
+    def _collect_kv_and_store(
+            self,
+            kv_caches: List[torch.Tensor],
+            token_ids: torch.Tensor,
+            attn_metadata: AttentionMetadata,
+            idx: int
+        ) -> None:
+        """
+        For lmcache engine: put the paged KV cache together and store it into the cache engine
+
+        Input:
+            kv_caches: the vLLM's KV cache buffer
+            tokens_ids: a 1D tensor of ints representing the token ids
+            attn_metadata: the attention metadata
+            idx: the index in the current batch
+        """
+        num_kv_heads = self.model_config.get_num_kv_heads(self.parallel_config)
+        head_size = self.model_config.get_head_size()
+        slot_mapping = torch.zeros_like(token_ids).to(self.device)
+
+        # prepare slot mapping
+        block_table = attn_metadata.prefill_metadata.block_tables[idx]
+        context_length = attn_metadata.prefill_metadata.context_lens
+        num_blocks = len(block_table)
+        prefix_slot_mapping = block_table.repeat_interleave(self.block_size) * self.block_size + \
+                torch.arange(self.block_size).repeat(num_blocks).to(block_table.device)
+        slot_mapping[:context_length] = prefix_slot_mapping[:context_length]
+        st, ed = attn_metadata.prefill_metadata.subquery_start_loc[idx:idx+2]
+        slot_mapping[context_length:] = attn_metadata.slot_mapping[st:ed]
+
+        rebuilt_kv_cache = []
+        # FIXME: the following code is not really readable
+        for kv_layer in kv_caches:
+            k_cache, v_cache = PagedAttention.split_kv_cache(kv_layer, num_kv_heads, head_size)
+            v = v_cache.permute([0, 3, 1, 2]).reshape(-1, num_kv_heads, head_size)[slot_mapping]
+            k = k_cache.permute([0, 3, 1, 2, 4]).reshape(-1, num_kv_heads, head_size)[slot_mapping]
+            rebuilt_kv_cache.append((k, v))
+
+        self.cache_engine.store(token_ids, rebuilt_kv_cache, "vllm")
+
+    def _broadcast_list(
+            self,
+            lis: List[Any]
+        ) -> List[Any]:
+        list_length_tensor = torch.tensor(len(lis), device=self.device)
+        broadcast(list_length_tensor, src = 0)
+        list_len = list_length_tensor.item()
+
+        if list_len == 0:
+            return []
+
+        if not self.is_driver_worker:
+            lis = [0] * list_len
+
+        broadcast_object_list(lis, src = 0)
+        return lis
+
+    def _broadcast_tokens_and_block_tables(
+            self,
+            seq_group_metadata_list: List[SequenceGroupMetadata],
+        ) -> List[SequenceGroupMetadata]:
+        list_length_tensor = torch.tensor(0)
+        ret = []
+        if self.is_driver_worker:
+            for seq_group_metadata in seq_group_metadata_list:
+                assert seq_group_metadata.is_prompt
+                seq_ids = list(seq_group_metadata.seq_data.keys())
+                assert len(seq_ids) == 1
+                seq_id = seq_ids[0]
+                seq_data = seq_group_metadata.seq_data[seq_id]
+                if seq_group_metadata.block_tables is not None:
+                    ret.append((seq_data.get_token_ids(), seq_group_metadata.block_tables[seq_id]))
+
+        return self._broadcast_list(ret)
+
+
     def _prepare_prompt(
         self,
         seq_group_metadata_list: List[SequenceGroupMetadata],
@@ -292,6 +394,7 @@ class ModelRunner:
         subquery_lens: List[int] = []
         prefix_block_tables: List[List[int]] = []
         multi_modal_input_list: List[torch.Tensor] = []
+
 
         if len(seq_group_metadata_list) == 0:
             return PreparePromptMetadata.empty()
@@ -317,13 +420,12 @@ class ModelRunner:
 
             # Query Cache engine to get the cache
             loaded_cache_flag = False
+            loaded_block_nums = []
             if self.cache_engine is not None and seq_group_metadata.block_tables is not None:
-                loaded_kv, loaded_kv_len = self.cache_engine.retrive(torch.tensor(seq_data.get_token_ids()), "vllm", self.device)
                 block_table = seq_group_metadata.block_tables[seq_id]
-                if loaded_kv_len > self.block_size:
-                    loaded_block_nums = self._inject_kv_cache(kv_caches, loaded_kv, loaded_kv_len, block_table)
-                    computed_len = len(loaded_block_nums) * self.block_size
-                    loaded_cache_flag = True
+                loaded_block_nums = self._retrive_and_inject(kv_caches, seq_data.get_token_ids(), block_table)
+                # NOTE: cannot directly change the computed_len in the seq_data, otherwise it will fail at the output processing function after decoding
+                computed_len = len(loaded_block_nums) * self.block_size
 
             # We should use get_len here because in case of preemption
             # it contains output tokens.
@@ -348,7 +450,7 @@ class ModelRunner:
                 else:
                     # The first prefill.
                     prefix_block_tables.append([])
-            elif loaded_cache_flag:
+            elif len(loaded_block_nums) > 0:
                 prefix_block_tables.append(loaded_block_nums)
             else:
                 prefix_block_tables.append([])
@@ -732,6 +834,8 @@ class ModelRunner:
                 else:
                     decode_reqs.append(seq_group_meta)
 
+            self._broadcast_tokens_and_block_tables(prefill_reqs)
+
             # Prepare input tensors.
             (
                 input_tokens,
@@ -832,6 +936,13 @@ class ModelRunner:
                 metadata_dict = decode_attn_metadata.asdict_zerocopy()
                 broadcast_tensor_dict(metadata_dict, src=0)
         else:
+            tokens_and_block_tables = self._broadcast_tokens_and_block_tables(seq_group_metadata_list)
+            # TODO: this can be optimized, when block table is None, the driver shouldn't broadcast
+            for element in tokens_and_block_tables:
+                tokens, block_table = element
+                if self.cache_engine is not None and block_table is not None:
+                    self._retrive_and_inject(kv_caches, tokens, block_table)
+
             metadata_dict = broadcast_tensor_dict(src=0)
             input_tokens = metadata_dict.pop("input_tokens")
             input_positions = metadata_dict.pop("input_positions")
@@ -921,38 +1032,21 @@ class ModelRunner:
         if self.cache_engine is not None and \
                 attn_metadata.prefill_metadata is not None and \
                 not (attn_metadata.slot_mapping == -1).any():
-            num_kv_heads = self.model_config.get_num_kv_heads(self.parallel_config)
-            head_size = self.model_config.get_head_size()
-            # generate new slot mapping
-            # FIXME: we shouldn't use too much of prefill_metadata here, because the fields depends on the attention implementation
-            for idx, seq_group_metadata in enumerate(seq_group_metadata_list):
-                seq_ids = seq_group_metadata.seq_data.keys()
-                assert len(seq_ids) == 1
-                seq_id = list(seq_ids)[0]
-                seq_data = seq_group_metadata.seq_data[seq_id]
-                whole_input_tokens = torch.tensor(seq_data.get_token_ids())
-                slot_mapping = torch.zeros_like(whole_input_tokens).to(self.device)
+            input_ids_list = []
+            if self.is_driver_worker:
+                for idx, seq_group_metadata in enumerate(seq_group_metadata_list):
+                    seq_ids = seq_group_metadata.seq_data.keys()
+                    assert len(seq_ids) == 1
+                    seq_id = list(seq_ids)[0]
+                    seq_data = seq_group_metadata.seq_data[seq_id]
+                    whole_input_tokens = torch.tensor(seq_data.get_token_ids())
+                    input_ids_list.append(whole_input_tokens)
+                self._broadcast_list(input_ids_list)
+            else:
+                input_ids_list = self._broadcast_list(input_ids_list)
 
-                # prepare slot mapping
-                block_table = attn_metadata.prefill_metadata.block_tables[idx]
-                context_length = attn_metadata.prefill_metadata.context_lens
-                num_blocks = len(block_table)
-                prefix_slot_mapping = block_table.repeat_interleave(self.block_size) * self.block_size + \
-                        torch.arange(self.block_size).repeat(num_blocks).to(block_table.device)
-                slot_mapping[:context_length] = prefix_slot_mapping[:context_length]
-                st, ed = attn_metadata.prefill_metadata.subquery_start_loc[idx:idx+2]
-                slot_mapping[context_length:] = attn_metadata.slot_mapping[st:ed]
-
-                rebuilt_kv_cache = []
-                # FIXME: the following code is not really readable
-                for kv_layer in kv_caches:
-                    k_cache, v_cache = PagedAttention.split_kv_cache(kv_layer, num_kv_heads, head_size)
-                    v = v_cache.permute([0, 3, 1, 2]).reshape(-1, num_kv_heads, head_size)[slot_mapping]
-                    k = k_cache.permute([0, 3, 1, 2, 4]).reshape(-1, num_kv_heads, head_size)[slot_mapping]
-                    rebuilt_kv_cache.append((k, v))
-
-                # FIXME: we should get the correct input_tokens
-                self.cache_engine.store(whole_input_tokens, rebuilt_kv_cache, "vllm")
+            for idx, input_ids in enumerate(input_ids_list):
+                self._collect_kv_and_store(kv_caches, input_ids, attn_metadata, idx)
 
         # Compute the logits.
         logits = self.model.compute_logits(hidden_states, sampling_metadata)
