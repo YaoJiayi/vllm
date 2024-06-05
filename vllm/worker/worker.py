@@ -73,7 +73,7 @@ class Worker(WorkerBase):
 
         # create lmcache engine 
         if model_config.enable_lmcache:
-            lmcache_metadata = LMCacheEngineMetadata(model_config.model, rank)
+            lmcache_metadata = LMCacheEngineMetadata(model_config.model, parallel_config.world_size, rank)
             lmcache_config = LMCacheEngineConfig(model_config.lmcache_chunksize, 
                                                  model_config.lmcache_local_cache,
                                                  model_config.lmcache_remote_cache)
