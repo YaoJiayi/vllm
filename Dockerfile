@@ -163,12 +163,16 @@ WORKDIR /lmcache
 
 # install additional dependencies for openai api server
 RUN git clone https://github.com/LMCache/LMCache
-
 WORKDIR /lmcache/LMCache
-
 RUN pip install -e .
+
+# Install lmcache-vllm driver
+WORKDIR /lmcache/
+RUN git clone https://github.com/LMCache/lmcache-vllm
+WORKDIR /lmcache/lmcache-vllm
+RUN pip install -e .
+
 
 ENTRYPOINT ["python3", "-m", "vllm.entrypoints.openai.api_server"]
 #################### LMCache test SERVER ####################
-
 
