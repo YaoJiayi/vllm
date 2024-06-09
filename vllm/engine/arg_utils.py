@@ -76,10 +76,7 @@ class EngineArgs:
     speculative_max_model_len: Optional[int] = None
 
     # LMCache configuration
-    enable_lmcache: bool = False
-    lmcache_chunksize: int = 256
-    lmcache_local_cache: Optional[str] = None
-    lmcache_remote_cache: Optional[str] = None
+    lmcache_config_file: Optional[str] = None
 
     def __post_init__(self):
         if self.tokenizer is None:
@@ -474,8 +471,7 @@ class EngineArgs:
             self.quantization, self.quantization_param_path,
             self.enforce_eager, self.max_context_len_to_capture,
             self.max_logprobs, self.skip_tokenizer_init,
-            self.enable_lmcache, self.lmcache_chunksize, 
-            self.lmcache_local_cache, self.lmcache_remote_cache,
+            self.lmcache_config_file,
             )
         cache_config = CacheConfig(self.block_size,
                                    self.gpu_memory_utilization,

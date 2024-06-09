@@ -120,26 +120,10 @@ def make_arg_parser():
 
     # LMCache related arguments
     parser.add_argument(
-        "--enable-lmcache",
-        action="store_true",
-        help="Enable LMCache engine")
-    parser.add_argument(
-        "--lmcache-local-cache",
-        type=str,
-        default="cuda",
-        help="Set the local cache backeend of lmcache, can be 'cuda' or 'cpu'")
-    parser.add_argument(
-        "--lmcache-remote-cache",
+        "--lmcache-config-file",
         type=str,
         default=None,
-        help="Set the url the remote cache backend of lmcache, currently support "
-             "redis (redis://<host>:<port>), or "
-             "lmcache-server (lm://<host>:<port>)")
-    parser.add_argument(
-        "--lmcache-chunksize",
-        type=int,
-        default=256,
-        help="Set the chunksize of lmcache engine")
+        help="The path to the lmcache configuration yaml file. Empty means disabling the lmcache")
 
     parser = AsyncEngineArgs.add_cli_args(parser)
     return parser

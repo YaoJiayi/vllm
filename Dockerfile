@@ -166,8 +166,6 @@ RUN git clone https://github.com/LMCache/LMCache
 
 WORKDIR /lmcache/LMCache
 
-COPY /local/yihua98/cache-engine.pth.bkup /tmp/cahce-engine.pth
-
 RUN pip install -e .
 
 ENTRYPOINT ["python3", "-m", "vllm.entrypoints.openai.api_server"]

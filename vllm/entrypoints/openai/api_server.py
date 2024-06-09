@@ -125,7 +125,6 @@ if __name__ == "__main__":
         allow_headers=args.allowed_headers,
     )
 
-
     if token := os.environ.get("VLLM_API_KEY") or args.api_key:
 
         @app.middleware("http")
