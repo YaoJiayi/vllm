@@ -164,6 +164,7 @@ WORKDIR /lmcache
 # install additional dependencies for openai api server
 RUN git clone https://github.com/LMCache/LMCache
 WORKDIR /lmcache/LMCache
+RUN pip install -r requirements.txt
 RUN pip install -e .
 
 # Install lmcache-vllm driver
