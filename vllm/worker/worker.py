@@ -73,7 +73,7 @@ class Worker(WorkerBase):
 
         # create lmcache engine 
         if model_config.lmcache_config_file is not None:
-            lmcache_metadata = LMCacheEngineMetadata(model_config.model, parallel_config.world_size, rank)
+            lmcache_metadata = LMCacheEngineMetadata(model_config.model, parallel_config.world_size, rank, fmt="vllm")
             lmcache_config = LMCacheEngineConfig.from_file(model_config.lmcache_config_file)
             LMCacheEngineBuilder.get_or_create("vllm", lmcache_config, lmcache_metadata)
 
