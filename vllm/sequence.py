@@ -654,6 +654,11 @@ class SequenceGroup:
         trace_headers: Optional[Mapping[str, str]] = None,
         prompt_adapter_request: Optional[PromptAdapterRequest] = None,
         priority: int = 0,
+        
+        # NOTE(Jiayi): Modification starts
+        lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+        # NOTE(Jiayi): Modification ends
+        
     ) -> None:
         self.request_id = request_id
         self.seqs = seqs
@@ -680,6 +685,10 @@ class SequenceGroup:
         self.priority = priority
 
         self.cached_request_output = None
+        
+        # NOTE(Jiayi): Modification starts
+        self.lmcache_model_request = lmcache_model_request
+        # NOTE(Jiayi): Modification ends
 
     @property
     def prompt(self) -> Optional[str]:
@@ -966,6 +975,10 @@ class SequenceGroupMetadata(
     cross_block_table: Optional[List[int]] = None
     prompt_adapter_request: Optional[PromptAdapterRequest] = None
     token_chunk_size: Optional[int] = None
+    
+    # NOTE(Jiayi): Modification starts
+    lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+    # NOTE(Jiayi): Modification ends
 
     ### Stateful fields that are lazily defined. ###
     # The number of speculative tokens adopted in this request.
@@ -1315,6 +1328,10 @@ class ExecuteModelRequest(
     last_sampled_token_ids: Optional[torch.Tensor] = None
     # Async callback
     async_callback: Optional[Callable] = None
+    
+    # NOTE(Jiayi): Modification starts
+    lmcache_model_request: Optional["LMCacheModelRequest"] = None
+    # NOTE(Jiayi): Modification ends
 
     @property
     def is_first_multi_step(self) -> bool:

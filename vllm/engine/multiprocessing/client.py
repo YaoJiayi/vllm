@@ -443,6 +443,10 @@ class MQLLMEngineClient(EngineClient):
         trace_headers: Optional[Mapping[str, str]] = None,
         prompt_adapter_request: Optional[PromptAdapterRequest] = None,
         priority: int = 0,
+        
+        # NOTE(Jiayi): Modification starts
+        lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+        # NOTE(Jiayi): Modification ends
     ) -> AsyncGenerator[RequestOutput, None]:
         ...
 
@@ -458,6 +462,11 @@ class MQLLMEngineClient(EngineClient):
         trace_headers: Optional[Mapping[str, str]] = None,
         prompt_adapter_request: Optional[PromptAdapterRequest] = None,
         priority: int = 0,
+        
+        # NOTE(Jiayi): Modification starts
+        lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+        # NOTE(Jiayi): Modification ends
+        
     ) -> AsyncGenerator[RequestOutput, None]:
         ...
 
@@ -474,6 +483,11 @@ class MQLLMEngineClient(EngineClient):
         trace_headers: Optional[Mapping[str, str]] = None,
         prompt_adapter_request: Optional[PromptAdapterRequest] = None,
         priority: int = 0,
+        
+        # NOTE(Jiayi): Modification starts
+        lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+        # NOTE(Jiayi): Modification ends
+        
         *,
         inputs: Optional[PromptType] = None  # DEPRECATED
     ) -> AsyncGenerator[RequestOutput, None]:
@@ -500,10 +514,13 @@ class MQLLMEngineClient(EngineClient):
             prompt = inputs
         assert (prompt is not None and sampling_params is not None
                 and request_id is not None)
-
         return self._process_request(prompt, sampling_params, request_id,
                                      lora_request, trace_headers,
-                                     prompt_adapter_request, priority)
+                                     prompt_adapter_request, priority,
+                                     
+                                     # NOTE(Jiayi): Modification starts
+                                     lmcache_model_request)
+                                     # NOTE(Jiayi): Modification ends
 
     @overload
     def encode(
@@ -587,6 +604,10 @@ class MQLLMEngineClient(EngineClient):
         trace_headers: Optional[Mapping[str, str]] = None,
         prompt_adapter_request: Optional[PromptAdapterRequest] = None,
         priority: int = 0,
+        
+        # NOTE(Jiayi): Modification starts
+        lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+        # NOTE(Jiayi): Modification ends
     ) -> Union[AsyncGenerator[RequestOutput, None], AsyncGenerator[
             PoolingRequestOutput, None]]:
         """Send an RPCGenerateRequest to the RPCServer and stream responses."""
@@ -640,6 +661,11 @@ class MQLLMEngineClient(EngineClient):
                     trace_headers=trace_headers,
                     prompt_adapter_request=prompt_adapter_request,
                     priority=priority,
+                    
+                    # NOTE(Jiayi): Modification starts
+                    lmcache_model_request=lmcache_model_request,
+                    # NOTE(Jiayi): Modification ends
+                    
                 ))
 
             # 3) Send the RPCGenerateRequest to the MQLLMEngine.

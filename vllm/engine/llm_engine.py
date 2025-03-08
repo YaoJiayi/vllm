@@ -557,6 +557,11 @@ class LLMEngine:
         prompt_adapter_request: Optional[PromptAdapterRequest],
         trace_headers: Optional[Mapping[str, str]] = None,
         priority: int = 0,
+        
+        # NOTE(Jiayi): Modification starts
+        lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+        # NOTE(Jiayi): Modification ends
+        
     ) -> Optional[SequenceGroup]:
         """Add a processed request to the engine's request pool.
         return the created sequence group.
@@ -606,7 +611,12 @@ class LLMEngine:
                 trace_headers=trace_headers,
                 prompt_adapter_request=prompt_adapter_request,
                 encoder_seq=encoder_seq,
-                priority=priority)
+                priority=priority,
+                
+                # NOTE(Jiayi): Modification starts
+                lmcache_model_request=lmcache_model_request,
+                # NOTE(Jiayi): Modification ends
+                )
         elif isinstance(params, PoolingParams):
             seq_group = self._create_sequence_group_with_pooling(
                 request_id,
@@ -678,6 +688,11 @@ class LLMEngine:
             trace_headers: Optional[Mapping[str, str]] = None,
             prompt_adapter_request: Optional[PromptAdapterRequest] = None,
             priority: int = 0,
+            
+            # NOTE(Jiayi): Modification starts
+            lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+            # NOTE(Jiayi): Modification ends
+            
             *,
             inputs: Optional[PromptType] = None,  # DEPRECATED
     ) -> None:
@@ -770,6 +785,10 @@ class LLMEngine:
             prompt_adapter_request=prompt_adapter_request,
             trace_headers=trace_headers,
             priority=priority,
+            
+            # NOTE(Jiayi): Modification starts
+            lmcache_model_request = lmcache_model_request,
+            # NOTE(Jiayi): Modification ends
         )
 
     def _validate_token_prompt(self, prompt: PromptType,
@@ -804,6 +823,11 @@ class LLMEngine:
         prompt_adapter_request: Optional[PromptAdapterRequest] = None,
         encoder_seq: Optional[Sequence] = None,
         priority: int = 0,
+        
+        # NOTE(Jiayi): Modification starts
+        lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+        # NOTE(Jiayi): Modification ends
+        
     ) -> SequenceGroup:
         """Creates a SequenceGroup with SamplingParams."""
         max_logprobs = self.get_model_config().max_logprobs
@@ -834,7 +858,13 @@ class LLMEngine:
             trace_headers=trace_headers,
             prompt_adapter_request=prompt_adapter_request,
             encoder_seq=encoder_seq,
-            priority=priority)
+            priority=priority,
+            
+            # NOTE(Jiayi): Modification starts
+            lmcache_model_request = lmcache_model_request,
+            # NOTE(Jiayi): Modification ends
+            
+            )
 
         return seq_group
 

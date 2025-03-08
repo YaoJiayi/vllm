@@ -661,6 +661,11 @@ class CompletionRequest(OpenAIBaseModel):
     top_p: Optional[float] = None
     user: Optional[str] = None
 
+    # NOTE (Jiayi): Modification starts
+    store_cache: bool = True
+    ttl: Optional[float] = None
+    # NOTE (Jiayi): Modification ends
+    
     # doc: begin-completion-sampling-params
     use_beam_search: bool = False
     top_k: Optional[int] = None

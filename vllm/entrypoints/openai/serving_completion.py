@@ -32,6 +32,14 @@ from vllm.sequence import Logprob
 from vllm.transformers_utils.tokenizer import AnyTokenizer
 from vllm.utils import merge_async_iterators
 
+# NOTE(Jiayi): Modification starts
+try:
+    from lmcache.experimental.cache_interface import LMCacheModelRequest
+    lmcache_available = True
+except ImportError:
+    lmcache_available = False
+# NOTE(Jiayi): Modification ends
+
 logger = init_logger(__name__)
 
 
@@ -149,6 +157,17 @@ class OpenAIServingCompletion(OpenAIServing):
                         params=sampling_params,
                     )
                 else:
+                    
+                    # NOTE(Jiayi): Modification starts
+                    if lmcache_available:
+                        lmcache_model_request = LMCacheModelRequest(
+                            store_cache=request.store_cache, 
+                            ttl=request.ttl
+                        )
+                    else:
+                        lmcache_model_request = None
+                    # NOTE(Jiayi): Modification ends
+
                     generator = self.engine_client.generate(
                         engine_prompt,
                         sampling_params,
@@ -157,6 +176,10 @@ class OpenAIServingCompletion(OpenAIServing):
                         prompt_adapter_request=prompt_adapter_request,
                         trace_headers=trace_headers,
                         priority=request.priority,
+
+                        # NOTE(Jiayi): Modification starts
+                        lmcache_model_request=lmcache_model_request,
+                        # NOTE(Jiayi): Modification ends
                     )
 
                 generators.append(generator)

@@ -47,6 +47,10 @@ class SequenceGroupToSample:
     prompt_logprob_indices: List[int]
     # Sample token indices from logits. Empty if sampling is not required.
     sample_indices: List[int]
+    
+    # NOTE(Jiayi): Modification starts
+    lmcache_model_request: Optional["LMCacheModelRequest"] = None
+    # NOTE(Jiayi): Modification ends
 
     @property
     def do_sample(self):
@@ -346,6 +350,11 @@ def _prepare_seq_groups(
             sample_obj.query_len = query_len
             sample_obj.generator = generator
             sample_obj.is_prompt = is_prompt
+            
+            # NOTE(Jiayi): Modification starts
+            sample_obj.lmcache_model_request = seq_group_metadata.lmcache_model_request
+            # NOTE(Jiayi): Modification ends
+            
         else:
             sample_obj = SequenceGroupToSample(
                 seq_ids=list(seq_ids),
@@ -357,6 +366,10 @@ def _prepare_seq_groups(
                 is_prompt=is_prompt,
                 prompt_logprob_indices=list(prompt_logprob_indices),
                 sample_indices=list(sample_indices),
+                
+                # NOTE(Jiayi): Modification starts
+                lmcache_model_request = seq_group_metadata.lmcache_model_request,
+                # NOTE(Jiayi): Modification ends
             )
 
         seq_groups.append(sample_obj)

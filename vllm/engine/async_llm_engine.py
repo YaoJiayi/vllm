@@ -469,6 +469,11 @@ class _AsyncLLMEngine(LLMEngine):
             trace_headers: Optional[Mapping[str, str]] = None,
             prompt_adapter_request: Optional[PromptAdapterRequest] = None,
             priority: int = 0,
+            
+            # NOTE(Jiayi): Modification starts
+            lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+            # NOTE(Jiayi): Modification ends
+            
             *,
             inputs: Optional[PromptType] = None,  # DEPRECATED
     ) -> None:
@@ -510,7 +515,7 @@ class _AsyncLLMEngine(LLMEngine):
                 default_guided_backend=self.decoding_config.
                 guided_decoding_backend,
                 model_config=self.model_config)
-
+        
         self._add_processed_request(
             request_id=request_id,
             processed_inputs=processed_inputs,
@@ -520,6 +525,11 @@ class _AsyncLLMEngine(LLMEngine):
             prompt_adapter_request=prompt_adapter_request,
             trace_headers=trace_headers,
             priority=priority,
+            
+            # NOTE(Jiayi): Modification starts
+            lmcache_model_request=lmcache_model_request,
+            # NOTE(Jiayi): Modification ends
+        
         )
 
     async def check_health_async(self) -> None:
@@ -890,6 +900,11 @@ class AsyncLLMEngine(EngineClient):
         trace_headers: Optional[Mapping[str, str]] = None,
         prompt_adapter_request: Optional[PromptAdapterRequest] = None,
         priority: int = 0,
+        
+        # NOTE(Jiayi): Modification starts
+        lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+        # NOTE(Jiayi): Modification ends
+        
         *,
         inputs: Optional[PromptType] = None,  # DEPRECATED
     ) -> AsyncGenerator[Union[RequestOutput, PoolingRequestOutput], None]:
@@ -922,6 +937,10 @@ class AsyncLLMEngine(EngineClient):
             trace_headers=trace_headers,
             prompt_adapter_request=prompt_adapter_request,
             priority=priority,
+            
+            # NOTE(Jiayi): Modification starts
+            lmcache_model_request=lmcache_model_request,
+            # NOTE(Jiayi): Modification ends
         )
 
         return stream.generator()
@@ -935,6 +954,10 @@ class AsyncLLMEngine(EngineClient):
         trace_headers: Optional[Mapping[str, str]] = None,
         prompt_adapter_request: Optional[PromptAdapterRequest] = None,
         priority: int = 0,
+        
+        # NOTE(Jiayi): Modification starts
+        lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+        # NOTE(Jiayi): Modification ends
     ) -> AsyncGenerator[RequestOutput, None]:
         """Generate outputs for a request.
 
@@ -1011,6 +1034,10 @@ class AsyncLLMEngine(EngineClient):
                     trace_headers=trace_headers,
                     prompt_adapter_request=prompt_adapter_request,
                     priority=priority,
+                    
+                    # NOTE(Jiayi): Modification starts
+                    lmcache_model_request=lmcache_model_request,
+                    # NOTE(Jiayi): Modification ends
             ):
                 yield LLMEngine.validate_output(output, RequestOutput)
         except asyncio.CancelledError:

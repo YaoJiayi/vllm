@@ -56,6 +56,11 @@ class EngineClient(ABC):
         trace_headers: Optional[Mapping[str, str]] = None,
         prompt_adapter_request: Optional[PromptAdapterRequest] = None,
         priority: int = 0,
+        
+        # NOTE(Jiayi): Modification starts
+        lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+        # NOTE(Jiayi): Modification ends
+        
     ) -> AsyncGenerator[RequestOutput, None]:
         """Generate outputs for a request."""
         ...

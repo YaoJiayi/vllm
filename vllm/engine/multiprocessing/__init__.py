@@ -36,7 +36,11 @@ class RPCProcessRequest:
     trace_headers: Optional[Mapping[str, str]] = None
     prompt_adapter_request: Optional[PromptAdapterRequest] = None
     priority: int = 0
-
+    
+    # NOTE(Jiayi): Modification starts
+    lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+    # NOTE(Jiayi): Modification ends
+    
     @overload
     def __init__(
         self,
@@ -78,6 +82,11 @@ class RPCProcessRequest:
             trace_headers: Optional[Mapping[str, str]] = None,
             prompt_adapter_request: Optional[PromptAdapterRequest] = None,
             priority: int = 0,
+            
+            # NOTE(Jiayi): Modification starts
+            lmcache_model_request: Optional["LMCacheModelRequest"] = None,
+            # NOTE(Jiayi): Modification ends
+            
             *,
             inputs: Optional[PromptType] = None,  # DEPRECATED
     ) -> None:
@@ -95,6 +104,10 @@ class RPCProcessRequest:
         self.trace_headers = trace_headers
         self.prompt_adapter_request = prompt_adapter_request
         self.priority = priority
+        
+        # NOTE(Jiayi): Modification starts
+        self.lmcache_model_request = lmcache_model_request
+        # NOTE(Jiayi): Modification ends
 
 
 @dataclass
